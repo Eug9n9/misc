@@ -1,0 +1,430 @@
+module.exports = function (grunt) {
+    'use strict';
+    var _ = require('lodash');
+    var path = require('path');
+
+    //Load multiple grunt tasks using globbing patterns
+    require('load-grunt-tasks')(grunt);
+
+    // Project configuration
+    grunt.initConfig({
+        buildSettings: grunt.file.readJSON('config/build.json'),
+        githash: {
+            main: {
+                options: {}
+            }
+        },
+        preprocess:{
+            debug:{
+                options: {
+                    context: {
+                        NODE_ENV: 'debug'
+                    }
+                },
+                files: {
+                    'public/index.html': 'public/index.html',
+                    'public/index_fr.html': 'public/index_fr.html'
+                }
+            },
+            nonMinified:{
+                options: {
+                    context: {
+                        NODE_ENV: 'debug'
+                    }
+                },
+                files: {
+                    '<%= buildSettings.nonMinified %>/index.<%= buildSettings.nonMinifiedExt %>' : '<%= buildSettings.nonMinified %>/index.<%= buildSettings.nonMinifiedExt %>',
+                    '<%= buildSettings.nonMinified %>/index_fr.<%= buildSettings.nonMinifiedExt %>' : '<%= buildSettings.nonMinified %>/index_fr.<%= buildSettings.nonMinifiedExt %>'
+                }
+            },
+            minified:{
+                options: {
+                    context: {
+                        NODE_ENV: 'prod'
+                    }
+                },
+                files: {
+                    '<%= buildSettings.minified %>/index.html' : '<%= buildSettings.minified %>/index.html',
+                    '<%= buildSettings.minified %>/index_fr.html' : '<%= buildSettings.minified %>/index_fr.html'
+                }
+            }
+
+        },
+        replace: {
+            minified: {
+                options: {
+                    patterns: [
+                        {
+                            match: 'githash',
+                            replacement: 'hash-<%= githash.main.hash %>; tag-<%= githash.main.tag %>; branch-<%= githash.main.branch %>;'
+                        }
+                    ]
+                },
+                files: [
+                    {expand: true, flatten: true, src: ['<%= buildSettings.minified %>/index.html'], dest: '<%= buildSettings.minified %>/'},
+                    {expand: true, flatten: true, src: ['<%= buildSettings.minified %>/index_fr.html'], dest: '<%= buildSettings.minified %>/'}
+                ]
+            },
+            nonMinified: {
+                options: {
+                    patterns: [
+                        {
+                            match: 'githash',
+                            replacement: 'hash-<%= githash.main.hash %>; tag-<%= githash.main.tag %>; branch-<%= githash.main.branch %>;'
+                        }
+                    ]
+                },
+                files: [
+                    {expand: true, flatten: true, src: ['<%= buildSettings.nonMinified %>/index.<%= buildSettings.nonMinifiedExt %>'], dest: '<%= buildSettings.nonMinified %>/'},
+                    {expand: true, flatten: true, src: ['<%= buildSettings.nonMinified %>/index_fr.<%= buildSettings.nonMinifiedExt %>'], dest: '<%= buildSettings.nonMinified %>/'}
+                ]
+            }
+        },
+        copy: {
+            resources: {
+                files: [
+                    {expand: true, flatten: true, src: ['public/resources/*'], dest: '<%= buildSettings.distDir %>/tmp/resources/', filter: 'isFile'}
+                ]
+            },
+            nonMinified: {
+                files: [
+                    {expand: true, cwd: 'public/css', src: ['**/*'], dest: '<%= buildSettings.nonMinified %>/css'},
+                    {expand: true, cwd: 'public/images', src: ['**/*'], dest: '<%= buildSettings.nonMinified %>/images'},
+                    {expand: true, cwd: 'public/resources', src: ['**/*'], dest: '<%= buildSettings.nonMinified %>/resources'},
+                    {
+                        expand: true,
+                        cwd: 'public/js',
+                        src: [
+                            '**/*',
+                            '!**/fxcenter/layout/index.html',
+                            '!**/fxcenter/layout/index_fr.html',
+                            '!**/fxcenter/layout/printFrame.html',
+                            '!**/fxcenter/errorPage',
+                            '!**/fxcenter/errorPage/**/*'
+                        ],
+                        dest: '<%= buildSettings.nonMinified %>/js'
+                    }
+                ]
+            },
+            minified: {
+                files: [
+                    {expand: true, cwd: 'public/css', src: ['**/*'], dest: '<%= buildSettings.minified %>/css'},
+                    {expand: true, cwd: 'public/images', src: ['**/*'], dest: '<%= buildSettings.minified %>/images'},
+                    {expand: true, cwd: 'public/resources', src: ['**/*'], dest: '<%= buildSettings.minified %>/resources'},
+                    {
+                        expand: true,
+                        cwd: 'public/js',
+                        src: [
+                            '**/*',
+                            '!**/*.html',
+                            '!**/fxcenter/errorPage',
+                            '!**/fxcenter/errorPage/**/*'
+                        ],
+                        dest: '<%= buildSettings.distDir %>/tmp/js'
+                    },
+                    {
+                        expand: true,
+                        cwd: 'public/js',
+                        src: [
+                            '**/lib/require/require-jquery.min.js',
+                            '**/vendor/angular-i18n/**/*.js ',
+                            '**/vendor/json2-bower/json2.min.js',
+                            '**/vendor/es5-shim/es5-shim.min.js',
+                            '**/vendor/REM-unit-polyfill/js/rem.min.js',
+                            '**/vendor/respond/dest/respond.min.js',
+                            '**/vendor/nga/dist/nga-widget.min.js',
+                            '**/vendor/super-override/dist/super-override-widget.min.js'
+                        ],
+                        dest: '<%= buildSettings.minified %>/js'
+                    }
+                ]
+            },
+            nonMinifiedDir: {
+                files: [{expand: true, cwd: '<%= buildSettings.distDir %>', src: ['**/*'], dest: '<%= buildSettings.nonMinified %>'}]
+            },
+            minifiedDir: {
+                files: [{expand: true, cwd: '<%= buildSettings.distDir %>', src: ['**/*'], dest: '<%= buildSettings.minified %>'}]
+            },
+            errorPages: {
+                files: [
+                    {
+                        src: [
+                            'public/css/bootstrap/bootstrap.css',
+                            'public/css/bootstrap/bootstrap.css.map',
+                            'public/css/reset.css',
+                            'public/css/style.css',
+                            'public/images/cibc-logo-en-154x70.png'
+                        ],
+                        dest: '<%= buildSettings.distErrorDir %>/',
+                        flatten: true,
+                        expand: true
+                    }
+                ]
+            }
+        },
+        'json-minify': {
+            main: {
+                files: '<%= buildSettings.distDir %>/tmp/resources/**/*.json'
+            }
+        },
+        inline: {
+            main: {
+                files: [
+                    {src: 'public/js/fxcenter/layout/index.html', dest: 'public/index.html'},
+                    {src: 'public/js/fxcenter/layout/index_fr.html', dest: 'public/index_fr.html'},
+                    {src: 'public/js/fxcenter/layout/printFrame.html', dest: 'public/printFrame.html'}
+                ]
+            } ,
+            minified: {
+                files: [
+                    {src: 'public/js/fxcenter/layout/index.html', dest: '<%= buildSettings.minified %>/index.html'},
+                    {src: 'public/js/fxcenter/layout/index_fr.html', dest: '<%= buildSettings.minified %>/index_fr.html'},
+                    {src: 'public/js/fxcenter/layout/printFrame.html', dest: '<%= buildSettings.minified %>/printFrame.html'}
+                ]
+            },
+            nonMinified: {
+                files: [
+                    {src: 'public/js/fxcenter/layout/index.html', dest: '<%= buildSettings.nonMinified %>/index.<%= buildSettings.nonMinifiedExt %>'},
+                    {src: 'public/js/fxcenter/layout/index_fr.html', dest: '<%= buildSettings.nonMinified %>/index_fr.<%= buildSettings.nonMinifiedExt %>'},
+                    {src: 'public/js/fxcenter/layout/printFrame.html', dest: '<%= buildSettings.nonMinified %>/printFrame.html'}
+                ]
+            },
+            errorPages: {
+                cwd: 'public/js/fxcenter/errorPage/partials',
+                expand: true,
+                src: ['**/*.html'],
+                dest: '<%= buildSettings.distErrorDir %>/'
+            }
+        },
+        less: {
+            /* Compile all targeted LESS files individually */
+            components: {
+                files: [
+                    {
+                        expand: true,
+                        cwd: 'public/less',
+                        // Compile each LESS component excluding "bootstrap.less",
+                        src: ['*.less', '!{boot,var,mix,_}*.less'],
+                        dest: 'public/css/',
+                        ext: '.css'
+                    }
+                ]
+            }
+        },
+        'merge-copy': {
+            main: {
+                options: {
+                    destination: '<%= buildSettings.build %>',
+                    directories: [ '<%= buildSettings.nonMinified %>', '<%= buildSettings.minified %>' ]
+                },
+            }
+        },
+        processhtml: {
+            options: {
+                process: true
+            },
+            nonMinified: {
+                files: {
+                    '<%= buildSettings.nonMinified %>/index.<%= buildSettings.nonMinifiedExt %>': ['<%= buildSettings.nonMinified %>/index.<%= buildSettings.nonMinifiedExt %>'],
+                    '<%= buildSettings.nonMinified %>/index_fr.<%= buildSettings.nonMinifiedExt %>': ['<%= buildSettings.nonMinified %>/index_fr.<%= buildSettings.nonMinifiedExt %>'],
+                    '<%= buildSettings.nonMinified %>/printFrame.html': ['<%= buildSettings.nonMinified %>/printFrame.html']
+                }
+            },
+            minified: {
+                files: {
+                    '<%= buildSettings.minified %>/index.html': ['<%= buildSettings.minified %>/index.html'],
+                    '<%= buildSettings.minified %>/index_fr.html': ['<%= buildSettings.minified %>/index_fr.html'],
+                    '<%= buildSettings.minified %>/printFrame.html': ['<%= buildSettings.minified %>/printFrame.html']
+                }
+            },
+            error: {}
+        },
+        requirejs: {
+            compile: {
+                options: {
+                    name: 'require-config',
+                    mainConfigFile: '<%= buildSettings.distDir %>/tmp/js/fxcenter/require-config.js',
+                    baseUrl: '<%= buildSettings.distDir %>/tmp/js/fxcenter',
+                    out: '<%= buildSettings.minified %>/js/fxcenter/require-config.js',
+                    generateSourceMaps: true,
+                    findNestedDependencies: true,
+                    preserveLicenseComments: false,
+                    optimize: 'uglify2',
+                    uglify2: {
+                        mangle: false
+                    },
+                    // load NGA on demand via require
+                    paths: {
+                        nga: "empty:",
+                        'super-override' : 'empty:'
+                    }
+                }
+            }
+        },
+        watch: {
+            resources: {
+                files: [
+                    'public/resources/**/*.json'
+                ],
+                tasks: ['copy:resources', 'json-minify', 'inline:main'],
+                options: {
+                    nospawn: true,
+                    livereload: true
+                }
+            },
+            htmlViews: {
+                files: [
+                    'public/js/fxcenter/**/*.html'
+                ],
+                tasks: ['copy:resources', 'json-minify', 'inline:main'],
+                options: {
+                    livereload: true
+                }
+            },
+            styles: {
+                files: ['public/less/**/*.less'], /* files to watch */
+                tasks: ['less'], /* tasks to run when watched files change */
+                options: {
+                    nospawn: true,
+                    livereload: true
+                }
+            }
+        },
+        clean: {
+            temp: {src: ['<%= buildSettings.distDir %>/tmp']},
+            nonMinified: {src: ['<%= buildSettings.nonMinified %>/**/*']},
+            minified: {src: ['<%= buildSettings.minified %>/**/*']},
+            build: {src: ['<%= buildSettings.build %>/**/*']},
+            errorPages: {src: ['<%= buildSettings.distErrorDir %>/**/*']}
+        },
+        karma: {
+            unit: {
+                configFile: 'karma.conf.js',
+                autoWatch: true
+            }
+        },
+        bootlint: {
+            options: {
+                stoponerror: false,
+                relaxerror: []
+            },
+            files: ['public/js/fxcenter/**/*.html']
+        },
+        html2js: {
+            options: {
+                module: 'fxcTemplates',
+                singleModule: true,
+                base: 'public/js/fxcenter',
+                amd : true,
+                htmlmin: {
+                    removeComments: true,
+                    collapseWhitespace: true
+                },
+                rename: function (moduleName) {
+                    return '/fxc/js/fxcenter/' + moduleName;
+                }
+            },
+            main: {
+                src: [
+                    'public/js/fxcenter/**/*.html',
+                    '!public/js/fxcenter/errorPage/**/*.html',
+                    '!public/js/fxcenter/layout/*.html'
+                ],
+                dest: '<%= buildSettings.distDir %>/tmp/js/fxcenter/fxcTemplate/fxcTemplates.js'
+            }
+        },
+        filerev: {
+            options: {
+                length: 12
+            },
+            assets: {
+                files: [{
+                    src: [
+                        '<%= buildSettings.minified %>/js/fxcenter/require-config.js',
+                        '<%= buildSettings.minified %>/js/lib/require/require-jquery.min.js',
+                        '<%= buildSettings.minified %>/css/style.css',
+                        '<%= buildSettings.minified %>/css/reset.css',
+                        '<%= buildSettings.minified %>/css/bootstrap/bootstrap.css'
+                    ]
+                }]
+            }
+        },
+        targetngmodules: {
+            dist: {
+                files: {'<%= buildSettings.distDir %>/tmp/js/fxcenter/app.js': './public/js/fxcenter/app.js'}
+            }
+        },
+        usemin: {
+            html: [
+                '<%= buildSettings.minified %>/index.html',
+                '<%= buildSettings.minified %>/index_fr.html',
+                '<%= buildSettings.minified %>/printFrame.html'
+            ],
+            options: {
+                assetsDirs: ['<%= buildSettings.minified %>']
+            }
+        }
+    });
+
+    // Task that is used for development. Just less and combine resources
+    grunt.registerTask('default', [
+        'less',        // pre-process less files
+        'copy:resources',   // copy resources
+        'json-minify', // minify the JSON resources files
+        'inline:main', // inline json in the index.html
+        'preprocess:debug', //set dev environment
+        'watch'        // watch for changes of JSON resources files, HTML files, LESS files
+    ]);
+
+    // Task that is used for uat/prod deployment
+    grunt.registerTask('build', [
+        'clean:build',    // clean dist folder
+        'nonMinified',        // non minifield build with jira ticket script
+        'minified',   // minifield build for production build
+        'merge-copy',
+        'clean:temp'     //clean temp in dist folder
+    ]);
+
+    // Non minified build
+    grunt.registerTask('nonMinified', [
+        'githash',             // get the current git hash, branch and tag
+        'clean:nonMinified',    // clean dist folder
+        'less',                // pre-process less files
+        'copy:resources',         // copy resources
+        'json-minify',         // minify the JSON resources files
+        'copy:nonMinified',    //copy js, css and template files
+        'inline:nonMinified',         // inline json in the index.html and copy to destination folder
+        'processhtml:nonMinified',    // process build annotations
+        'replace:nonMinified',        // replace githash
+        'preprocess:nonMinified'       //set prod environment
+    ]);
+
+    // Main task to build minified production ready app
+    grunt.registerTask('minified', [
+        'githash',                // get the current git hash, branch and tag
+        'clean:minified',       // clean dist folder
+        'less',                   // pre-process less files
+        'copy:resources',              // copy resources
+        'json-minify',            // minify the JSON resources files
+        'copy:minified',           // copy files to dist directory for processing and copy files (js and html) that won't be loaded using require
+        'html2js',                // build angular templatecache
+        'targetngmodules',        // inject the templatecache into angular module list
+        'requirejs',              // build require min file
+        'filerev',                // build revision map for cache bust
+        'inline:minified',            // inline json in the index.html and copy to destination folder
+        'processhtml:minified',       // process build annotations
+        'replace:minified',           // replace githash
+        'usemin',                 // replace require, css and js files using filerev
+        'preprocess:minified'         //set prod environment
+    ]);
+
+    grunt.registerTask('karma-tests', [
+        'karma:unit'
+    ]);
+
+    grunt.registerTask('distErrorPages', [
+        'clean:errorPages',
+        'inline:errorPages',
+        'copy:errorPages'
+    ]);
+};
